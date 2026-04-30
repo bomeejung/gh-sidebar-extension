@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GH Sidebar Options</title>
+<style>
+  body { font: 14px -apple-system, system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; }
+  label { display: block; margin: 12px 0 4px; font-weight: 600; }
+  input { width: 100%; padding: 6px; font: inherit; box-sizing: border-box; }
+  button { margin-top: 12px; padding: 6px 12px; }
+  .ok { color: #1a7f37; }
+  small { color: #6e7781; }
+</style>
+</head>
+<body>
+<h2>GH Issues Sidebar</h2>
+<label>GitHub Personal Access Token</label>
+<input id="token" type="password" placeholder="ghp_…">
+<small>Needs <code>repo</code> scope (or <code>public_repo</code> for public only). Stored locally in chrome.storage.</small>
+<br>
+<button id="save">Save</button>
+<span id="status"></span>
+<script src="options.js"></script>
+</body>
+</html>

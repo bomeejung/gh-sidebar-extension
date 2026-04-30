@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GH Issues</title>
+<style>
+  body { font: 13px -apple-system, system-ui, sans-serif; margin: 0; padding: 8px; color: #1f2328; background: #fff; }
+  header { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  header select, header button, header input { font-size: 12px; padding: 3px 6px; }
+  header input { flex: 1; min-width: 0; }
+  .issue { padding: 6px 4px; border-bottom: 1px solid #eaeef2; display: flex; gap: 6px; align-items: flex-start; }
+  .issue a { color: #0969da; text-decoration: none; flex: 1; min-width: 0; }
+  .issue a:hover { text-decoration: underline; }
+  .num { color: #6e7781; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .star { cursor: pointer; user-select: none; color: #d0d7de; flex-shrink: 0; }
+  .star.on { color: #d4a72c; }
+  .meta { color: #6e7781; font-size: 11px; }
+  .empty, .err { padding: 12px; color: #6e7781; text-align: center; }
+  .err { color: #cf222e; }
+  .repo-tag { display: inline-block; background: #eaeef2; border-radius: 3px; padding: 0 4px; font-size: 11px; margin-right: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <select id="view">
+    <option value="favorites">★ Favorites</option>
+    <option value="assigned">Assigned to me</option>
+    <option value="created">Created by me</option>
+    <option value="mentioned">Mentioned</option>
+    <option value="review">Review requested</option>
+  </select>
+  <input id="filter" placeholder="filter…">
+  <button id="refresh" title="Refresh">↻</button>
+  <button id="opts" title="Options">⚙</button>
+</header>
+<div id="list"></div>
+<script src="sidepanel.js"></script>
+</body>
+</html>
