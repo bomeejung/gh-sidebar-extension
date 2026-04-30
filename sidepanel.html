@@ -4,20 +4,170 @@
 <meta charset="utf-8">
 <title>GH Issues</title>
 <style>
-  body { font: 13px -apple-system, system-ui, sans-serif; margin: 0; padding: 8px; color: #1f2328; background: #fff; }
-  header { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
-  header select, header button, header input { font-size: 12px; padding: 3px 6px; }
-  header input { flex: 1; min-width: 0; }
-  .issue { padding: 6px 4px; border-bottom: 1px solid #eaeef2; display: flex; gap: 6px; align-items: flex-start; }
-  .issue a { color: #0969da; text-decoration: none; flex: 1; min-width: 0; }
-  .issue a:hover { text-decoration: underline; }
-  .num { color: #6e7781; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-  .star { cursor: pointer; user-select: none; color: #d0d7de; flex-shrink: 0; }
-  .star.on { color: #d4a72c; }
-  .meta { color: #6e7781; font-size: 11px; }
-  .empty, .err { padding: 12px; color: #6e7781; text-align: center; }
-  .err { color: #cf222e; }
-  .repo-tag { display: inline-block; background: #eaeef2; border-radius: 3px; padding: 0 4px; font-size: 11px; margin-right: 4px; }
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f8fa;
+    --fg: #1f2328;
+    --fg-muted: #6e7781;
+    --border: #d0d7de;
+    --border-soft: #eaeef2;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #cf222e;
+    --gold: #d4a72c;
+    --green: #1a7f37;
+    --green-soft: #dafbe1;
+    --purple: #8250df;
+    --purple-soft: #fbefff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --bg-soft: #161b22;
+      --fg: #e6edf3;
+      --fg-muted: #8b949e;
+      --border: #30363d;
+      --border-soft: #21262d;
+      --accent: #2f81f7;
+      --accent-soft: #0d2d52;
+      --warn: #f85149;
+      --gold: #d29922;
+      --green: #3fb950;
+      --green-soft: #033a16;
+      --purple: #a371f7;
+      --purple-soft: #2e1065;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font: 13px -apple-system, system-ui, "Segoe UI", sans-serif;
+    margin: 0;
+    color: var(--fg);
+    background: var(--bg);
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6px;
+    align-items: center;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 1;
+  }
+  header .row2 {
+    grid-column: 1 / -1;
+    display: flex; gap: 6px; align-items: center;
+  }
+  select, input[type=text], button {
+    font: inherit;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+  }
+  select:hover, input[type=text]:hover, button:hover { border-color: var(--fg-muted); }
+  select:focus, input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  input[type=text] { flex: 1; min-width: 0; }
+  .icon-btn {
+    width: 28px; height: 28px;
+    padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .icon-btn:active { transform: scale(0.96); }
+  .icon-btn:disabled { opacity: 0.5; cursor: wait; }
+  .status {
+    font-size: 11px;
+    color: var(--fg-muted);
+    padding: 2px 4px;
+  }
+  .status.err { color: var(--warn); }
+  #list { flex: 1; overflow-y: auto; padding: 4px 0; }
+  .issue {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    transition: background 0.1s ease;
+  }
+  .issue:hover { background: var(--bg-soft); }
+  .issue .body { flex: 1; min-width: 0; }
+  .star {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-top: 1px;
+    color: var(--border);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .star:hover { color: var(--gold); }
+  .star.on { color: var(--gold); }
+  a.title {
+    color: var(--fg);
+    text-decoration: none;
+    font-weight: 500;
+    display: block;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  a.title:hover { color: var(--accent); text-decoration: underline; }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--fg-muted);
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  .repo-tag {
+    background: var(--bg-soft);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 10px;
+    color: var(--fg-muted);
+  }
+  .badge {
+    display: inline-block;
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: capitalize;
+    background: var(--green-soft);
+    color: var(--green);
+  }
+  .badge.closed { background: var(--purple-soft); color: var(--purple); }
+  .badge.merged { background: var(--purple-soft); color: var(--purple); }
+  .badge.pr { background: var(--accent-soft); color: var(--accent); }
+  .label {
+    display: inline-block;
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 10px;
+    line-height: 1.4;
+    border: 1px solid var(--lc, #888);
+    color: var(--lc, var(--fg-muted));
+    background: color-mix(in srgb, var(--lc, #888) 12%, transparent);
+  }
+  .empty, .err {
+    padding: 24px 16px;
+    color: var(--fg-muted);
+    text-align: center;
+    font-size: 12px;
+  }
+  .err { color: var(--warn); }
 </style>
 </head>
 <body>
@@ -29,9 +179,12 @@
     <option value="mentioned">Mentioned</option>
     <option value="review">Review requested</option>
   </select>
-  <input id="filter" placeholder="filter…">
-  <button id="refresh" title="Refresh">↻</button>
-  <button id="opts" title="Options">⚙</button>
+  <button id="refresh" class="icon-btn" title="Refresh from GitHub">↻</button>
+  <button id="opts" class="icon-btn" title="Options">⚙</button>
+  <div class="row2">
+    <input id="filter" type="text" placeholder="Filter…">
+    <span id="status" class="status">—</span>
+  </div>
 </header>
 <div id="list"></div>
 <script src="sidepanel.js"></script>
