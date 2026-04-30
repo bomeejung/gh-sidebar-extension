@@ -10,8 +10,10 @@ const VIEWS = {
 };
 
 async function getCfg() {
-  return await chrome.storage.local.get(['token', 'favorites', 'lastView', 'cache']);
+  return await chrome.storage.local.get(['token', 'favorites', 'lastView', 'cache', 'searchScope']);
 }
+
+let searchResults = null;
 
 async function setCache(cache) {
   await chrome.storage.local.set({ cache });
@@ -146,6 +148,41 @@ function timeAgo(ts) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+async function runSearch() {
+  const cfg = await getCfg();
+  if (!cfg.token) { setStatus('No token. Click ⚙ to configure.', 'err'); return; }
+  const scope = (cfg.searchScope || '').trim();
+  const text = $('filter').value.trim();
+  if (!text) {
+    searchResults = null;
+    render();
+    return;
+  }
+  const q = `is:open ${scope} ${text}`.trim();
+  setStatus(`Searching "${text}"…`, 'muted');
+  try {
+    const url = `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=50&sort=updated`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json' },
+    });
+    if (!res.ok) throw new Error(`GitHub ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data = await res.json();
+    searchResults = (data.items || []).map(i => ({
+      number: i.number,
+      title: i.title,
+      html_url: i.html_url,
+      state: i.state,
+      isPR: !!i.pull_request,
+      repo: (i.repository_url || '').replace('https://api.github.com/repos/', ''),
+      labels: (i.labels || []).map(l => ({ name: l.name, color: l.color })),
+    }));
+    setStatus(`${searchResults.length} match${searchResults.length === 1 ? '' : 'es'}`, 'muted');
+    render();
+  } catch (e) {
+    setStatus(e.message, 'err');
+  }
+}
+
 async function render() {
   const cfg = await getCfg();
   const cache = cfg.cache;
@@ -153,6 +190,26 @@ async function render() {
   const filter = $('filter').value.trim().toLowerCase();
   const favorites = cfg.favorites || {};
   const favSet = new Set(Object.keys(favorites));
+
+  if (view === 'search') {
+    $('refresh').disabled = true;
+    $('filter').placeholder = 'Search open issues — press Enter';
+    if (searchResults === null) {
+      list.innerHTML = '<div class="empty">Type a query and press Enter.</div>';
+      if (status.textContent === '—' || !status.textContent) setStatus('Search mode', 'muted');
+      return;
+    }
+    let issues = searchResults;
+    if (!issues.length) {
+      list.innerHTML = '<div class="empty">No matches.</div>';
+      return;
+    }
+    renderIssues(issues, favSet, view);
+    return;
+  }
+
+  $('refresh').disabled = false;
+  $('filter').placeholder = 'Filter…';
 
   if (!cache) {
     list.innerHTML = '<div class="empty">No data yet. Hit ↻ to fetch.</div>';
@@ -191,7 +248,10 @@ async function render() {
     list.innerHTML = '<div class="empty">No issues.</div>';
     return;
   }
+  renderIssues(issues, favSet, view);
+}
 
+function renderIssues(issues, favSet, view) {
   list.innerHTML = '';
   for (const issue of issues) {
     const k = key(issue);
@@ -202,7 +262,7 @@ async function render() {
       const c = (l.color || '888').replace('#', '');
       return `<span class="label" style="--lc:#${escapeHtml(c)}">${escapeHtml(l.name)}</span>`;
     }).join('');
-    const showState = view === 'favorites' && issue.state && issue.state !== 'open';
+    const showState = (view === 'favorites' || view === 'search') && issue.state && issue.state !== 'open';
     const stateBadge = showState
       ? `<span class="badge ${issue.state}">${issue.isPR ? 'PR' : 'Issue'} · ${issue.state}</span>`
       : (issue.isPR ? '<span class="badge pr">PR</span>' : '');
@@ -246,9 +306,18 @@ list.addEventListener('click', async (e) => {
 
 $('view').addEventListener('change', async () => {
   await chrome.storage.local.set({ lastView: $('view').value });
+  if ($('view').value !== 'search') searchResults = null;
   render();
 });
-$('filter').addEventListener('input', render);
+$('filter').addEventListener('input', () => {
+  if ($('view').value !== 'search') render();
+});
+$('filter').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && $('view').value === 'search') {
+    e.preventDefault();
+    runSearch();
+  }
+});
 $('refresh').addEventListener('click', refresh);
 $('opts').addEventListener('click', () => chrome.runtime.openOptionsPage());
 

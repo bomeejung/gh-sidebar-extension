@@ -17,6 +17,10 @@
 <label>GitHub Personal Access Token</label>
 <input id="token" type="password" placeholder="ghp_…">
 <small>Needs <code>repo</code> scope (or <code>public_repo</code> for public only). Stored locally in chrome.storage.</small>
+
+<label>Search scope</label>
+<input id="searchScope" type="text" placeholder="org:myorg  or  repo:owner/name">
+<small>Used by the Search view. Examples: <code>org:myorg</code>, <code>repo:myorg/name</code>, or multiple separated by space.</small>
 <br>
 <button id="save">Save</button>
 <span id="status"></span>
