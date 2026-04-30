@@ -158,7 +158,8 @@ async function runSearch() {
     render();
     return;
   }
-  const q = `is:open ${scope} ${text}`.trim();
+  const hasType = /\bis:(issue|pull-request|pr)\b/.test(text);
+  const q = `is:open ${hasType ? '' : 'is:issue'} ${scope} ${text}`.replace(/\s+/g, ' ').trim();
   setStatus(`Searching "${text}"…`, 'muted');
   try {
     const url = `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=50&sort=updated`;
