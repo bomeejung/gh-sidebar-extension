@@ -2,6 +2,8 @@
 
 Personal GitHub issues + a local "favorites" star, in the side panel.
 
+I wanted to favorite issues I'm working on so I could easily find them without keeping them in open tabs. Aside from the Favorites, the search is handy - you can use the usual github search syntax.
+
 ## Install (unpacked)
 
 1. Open `brave://extensions`
