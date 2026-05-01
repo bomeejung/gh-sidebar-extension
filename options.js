@@ -1,7 +1,3 @@
-// Paste your GitHub OAuth App client_id here. Required for "Sign in with GitHub".
-// Register at: https://github.com/settings/developers (enable "Device Flow" on the app).
-const CLIENT_ID = 'Ov23lioGMfNUqJln61jV';
-
 const SCOPES = 'repo';
 const DEVICE_CODE_URL = 'https://github.com/login/device/code';
 const TOKEN_URL = 'https://github.com/login/oauth/access_token';
@@ -9,19 +5,21 @@ const USER_URL = 'https://api.github.com/user';
 
 const $ = (id) => document.getElementById(id);
 
+let clientId = '';
 let pollAbort = null;
 
 function isConfigured() {
-  return typeof CLIENT_ID === 'string' && CLIENT_ID.length > 0;
+  return clientId.length > 0;
 }
 
 async function loadState() {
-  if (!isConfigured()) {
-    $('config-warn').hidden = false;
-    $('signin').disabled = true;
-  }
-  const cfg = await chrome.storage.local.get(['token', 'tokenSource', 'tokenLogin', 'searchScope']);
+  const cfg = await chrome.storage.local.get([
+    'token', 'tokenSource', 'tokenLogin', 'searchScope', 'clientId',
+  ]);
+  clientId = cfg.clientId || '';
+  $('clientId').value = clientId;
   $('searchScope').value = cfg.searchScope || '';
+  $('app-section').open = !isConfigured();
   if (cfg.token) {
     showSignedIn(cfg.tokenSource, cfg.tokenLogin);
   } else {
@@ -40,10 +38,13 @@ function showSignedIn(source, login) {
 }
 
 function showSignedOut() {
-  $('signin').hidden = !isConfigured();
+  $('signin').hidden = false;
+  $('signin').disabled = !isConfigured();
   $('device-prompt').hidden = true;
   $('signout').hidden = true;
-  $('auth-status').textContent = 'Not signed in.';
+  $('auth-status').textContent = isConfigured()
+    ? 'Not signed in.'
+    : 'Not signed in. Add an OAuth App Client ID above to enable sign-in.';
   $('auth-status').className = 'muted';
 }
 
@@ -60,6 +61,17 @@ async function fetchLogin(token) {
   }
 }
 
+async function saveClientId() {
+  const id = $('clientId').value.trim();
+  await chrome.storage.local.set({ clientId: id });
+  clientId = id;
+  const s = $('clientid-status');
+  s.textContent = ' Saved ✓';
+  s.className = 'ok';
+  setTimeout(() => { s.textContent = ''; }, 2000);
+  if ($('signout').hidden) showSignedOut();
+}
+
 async function startDeviceFlow() {
   if (!isConfigured()) return;
   $('signin').disabled = true;
@@ -68,7 +80,7 @@ async function startDeviceFlow() {
     const res = await fetch(DEVICE_CODE_URL, {
       method: 'POST',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: CLIENT_ID, scope: SCOPES }),
+      body: JSON.stringify({ client_id: clientId, scope: SCOPES }),
     });
     if (!res.ok) throw new Error(`device/code returned ${res.status}`);
     const data = await res.json();
@@ -97,9 +109,8 @@ async function startDeviceFlow() {
   } catch (e) {
     setPollStatus(`Sign-in failed: ${e.message}`, 'err');
     $('signin').hidden = false;
+    $('signin').disabled = !isConfigured();
     $('device-prompt').hidden = true;
-  } finally {
-    $('signin').disabled = false;
   }
 }
 
@@ -114,7 +125,7 @@ async function pollForToken(deviceCode, interval, expiresIn, abort) {
       method: 'POST',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: CLIENT_ID,
+        client_id: clientId,
         device_code: deviceCode,
         grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
       }),
@@ -178,6 +189,7 @@ async function saveScope() {
   setTimeout(() => { s.textContent = ''; }, 2000);
 }
 
+$('save-clientid').addEventListener('click', saveClientId);
 $('signin').addEventListener('click', startDeviceFlow);
 $('signout').addEventListener('click', signOut);
 $('cancel-signin').addEventListener('click', () => {

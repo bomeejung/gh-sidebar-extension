@@ -22,10 +22,6 @@
     background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px;
     padding: 10px 12px; margin: 8px 0 12px; font-size: 13px; line-height: 1.4;
   }
-  .config-warn {
-    background: #ffebe9; border: 1px solid #cf222e; color: #82071e;
-    border-radius: 6px; padding: 10px 12px; margin: 8px 0 12px; font-size: 13px;
-  }
   .code-box {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
     font-size: 24px; letter-spacing: 6px; font-weight: 600;
@@ -40,10 +36,19 @@
 <body>
 <h2>GH Issues Sidebar</h2>
 
-<div id="config-warn" class="config-warn" hidden>
-  <strong>Setup required:</strong> <code>CLIENT_ID</code> is not configured in <code>options.js</code>.
-  Sign-in with GitHub is disabled. See the README for how to register an OAuth App.
-</div>
+<details id="app-section">
+  <summary>GitHub OAuth App setup</summary>
+  <p style="font-size:13px;line-height:1.4;margin:8px 0;">
+    Register an OAuth App at <a href="https://github.com/settings/developers" target="_blank" rel="noopener">github.com/settings/developers</a>
+    with <strong>Device Flow enabled</strong>, then paste its Client ID below. Required once per install.
+    <a href="https://github.com/bomeejung/gh-sidebar-extension#one-time-setup-register-an-oauth-app" target="_blank" rel="noopener">Full instructions →</a>
+  </p>
+  <label for="clientId">OAuth App Client ID</label>
+  <input id="clientId" type="text" placeholder="Iv1.… or Ov23l…" autocomplete="off">
+  <br>
+  <button id="save-clientid">Save</button>
+  <span id="clientid-status"></span>
+</details>
 
 <div id="auth-status" class="muted">Loading…</div>
 
@@ -77,7 +82,7 @@
 
 <label for="searchScope">Search scope</label>
 <input id="searchScope" type="text" placeholder="org:myorg  or  repo:owner/name">
-<small>Used by the Search view. Examples: <code>org:myorg</code>, <code>repo:myorg/name</code>, or multiple separated by space.</small>
+<small>Used by the Search view. Examples: <code>org:myorg</code>, <code>repo:owner/name</code>, or multiple separated by space.</small>
 <br>
 <button id="save-scope">Save scope</button>
 <span id="scope-status"></span>
