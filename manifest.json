@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Personal GitHub issues + favorites in a side panel.",
   "permissions": ["sidePanel", "storage"],
-  "host_permissions": ["https://api.github.com/*"],
+  "host_permissions": ["https://api.github.com/*", "https://github.com/login/*"],
   "action": { "default_title": "GH Issues" },
   "side_panel": { "default_path": "sidepanel.html" },
   "options_page": "options.html",

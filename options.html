@@ -4,26 +4,84 @@
 <meta charset="utf-8">
 <title>GH Sidebar Options</title>
 <style>
-  body { font: 14px -apple-system, system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; }
+  body { font: 14px -apple-system, system-ui, sans-serif; max-width: 540px; margin: 24px auto; padding: 0 16px; color: #1f2328; }
+  h2 { margin-top: 0; }
   label { display: block; margin: 12px 0 4px; font-weight: 600; }
-  input { width: 100%; padding: 6px; font: inherit; box-sizing: border-box; }
-  button { margin-top: 12px; padding: 6px 12px; }
-  .ok { color: #1a7f37; }
+  input[type=text], input[type=password] { width: 100%; padding: 6px; font: inherit; box-sizing: border-box; border: 1px solid #d0d7de; border-radius: 6px; }
+  button { margin-top: 8px; padding: 6px 14px; font: inherit; border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa; cursor: pointer; }
+  button:hover { background: #eaeef2; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  button.primary { background: #1f883d; color: white; border-color: #1f883d; }
+  button.primary:hover { background: #1a7f37; }
   small { color: #6e7781; }
+  .ok { color: #1a7f37; }
+  .err { color: #cf222e; }
+  .muted { color: #6e7781; }
+  #auth-status { font-weight: 600; padding: 8px 0; }
+  .warn-box {
+    background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px;
+    padding: 10px 12px; margin: 8px 0 12px; font-size: 13px; line-height: 1.4;
+  }
+  .config-warn {
+    background: #ffebe9; border: 1px solid #cf222e; color: #82071e;
+    border-radius: 6px; padding: 10px 12px; margin: 8px 0 12px; font-size: 13px;
+  }
+  .code-box {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    font-size: 24px; letter-spacing: 6px; font-weight: 600;
+    padding: 14px; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px;
+    text-align: center; margin: 8px 0; user-select: all;
+  }
+  details > summary { cursor: pointer; font-weight: 600; margin: 16px 0 8px; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 20px 0; }
+  code { background: #f6f8fa; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
 </style>
 </head>
 <body>
 <h2>GH Issues Sidebar</h2>
-<label>GitHub Personal Access Token</label>
-<input id="token" type="password" placeholder="ghp_…">
-<small>Needs <code>repo</code> scope (or <code>public_repo</code> for public only). Stored locally in chrome.storage.</small>
 
-<label>Search scope</label>
+<div id="config-warn" class="config-warn" hidden>
+  <strong>Setup required:</strong> <code>CLIENT_ID</code> is not configured in <code>options.js</code>.
+  Sign-in with GitHub is disabled. See the README for how to register an OAuth App.
+</div>
+
+<div id="auth-status" class="muted">Loading…</div>
+
+<button id="signin" class="primary">Sign in with GitHub</button>
+<button id="signout" hidden>Sign out</button>
+
+<div id="device-prompt" hidden>
+  <p>Open <a id="verify-link" href="https://github.com/login/device" target="_blank" rel="noopener">github.com/login/device</a> and enter this code:</p>
+  <div class="code-box"><span id="user-code"></span></div>
+  <p id="poll-status" class="muted">Waiting for authorization…</p>
+  <button id="cancel-signin">Cancel</button>
+</div>
+
+<details id="pat-section">
+  <summary>Use a Personal Access Token instead</summary>
+  <div class="warn-box">
+    <strong>⚠ Warning:</strong> PATs are long-lived and stored unencrypted in <code>chrome.storage.local</code>
+    on disk. Anyone with read access to your browser profile (other local users, malware, backup tools)
+    can recover the token. Prefer <strong>Sign in with GitHub</strong> above — it issues shorter-lived,
+    easily-revoked tokens.
+  </div>
+  <label for="token">GitHub Personal Access Token</label>
+  <input id="token" type="password" placeholder="ghp_…" autocomplete="off">
+  <small>Needs <code>repo</code> scope (or <code>public_repo</code> for public only).</small>
+  <br>
+  <button id="save-token">Save token</button>
+  <span id="pat-status"></span>
+</details>
+
+<hr>
+
+<label for="searchScope">Search scope</label>
 <input id="searchScope" type="text" placeholder="org:myorg  or  repo:owner/name">
 <small>Used by the Search view. Examples: <code>org:myorg</code>, <code>repo:myorg/name</code>, or multiple separated by space.</small>
 <br>
-<button id="save">Save</button>
-<span id="status"></span>
+<button id="save-scope">Save scope</button>
+<span id="scope-status"></span>
+
 <script src="options.js"></script>
 </body>
 </html>

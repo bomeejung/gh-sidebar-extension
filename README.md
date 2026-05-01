@@ -2,13 +2,25 @@
 
 Personal GitHub issues + a local "favorites" star, in the side panel.
 
+## One-time setup: register an OAuth App
+
+The extension uses GitHub's **Device Flow** for sign-in, which requires a `client_id`.
+
+1. Go to <https://github.com/settings/developers> → **OAuth Apps** → **New OAuth App**
+2. Fill in any values for "Application name", "Homepage URL", and "Authorization callback URL" (the callback URL is unused for device flow — `https://localhost` is fine).
+3. After creating the app, on its settings page check **Enable Device Flow** and click **Update**.
+4. Copy the **Client ID**.
+5. Open `options.js` and paste it into the `CLIENT_ID` constant at the top.
+
+(The Client ID is public — it ships in the extension. That's normal for OAuth apps.)
+
 ## Install (unpacked)
 
 1. Open `brave://extensions`
 2. Toggle **Developer mode** (top right)
 3. Click **Load unpacked** → select this folder
 4. Pin the extension, click its icon → side panel opens
-5. Click ⚙ → paste a GitHub PAT (scope: `repo`, or `public_repo` for public only)
+5. Click ⚙ → **Sign in with GitHub** → enter the displayed code at <https://github.com/login/device>
 
 ## Use
 
@@ -16,7 +28,8 @@ Personal GitHub issues + a local "favorites" star, in the side panel.
 - Click ★ on any issue to favorite/unfavorite (stored locally in `chrome.storage.local`)
 - ↻ to refresh, filter box for substring search
 
-## Notes
+## Auth notes
 
+- **Sign in with GitHub** (preferred): tokens are issued by GitHub and can be revoked anytime at <https://github.com/settings/applications>. Scope: `repo`.
+- **Personal Access Token** (fallback, in options under a disclosure): long-lived bearer token stored unencrypted in `chrome.storage.local`. Anyone with read access to your browser profile can recover it. Use only if device flow doesn't fit your workflow (e.g., fine-grained PATs).
 - Favorites survive across machines only if you sync via `chrome.storage.sync` (not used here — local-only).
-- Token is stored in `chrome.storage.local`. Treat the profile as you would any place storing a PAT.

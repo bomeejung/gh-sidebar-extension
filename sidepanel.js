@@ -51,13 +51,25 @@ function buildRefreshQuery(favorites) {
     return { alias: `f${i}`, owner, name, number: Number(num) };
   });
 
+  const variables = {};
+  const varDecls = [];
+  for (const f of favEntries) {
+    variables[`${f.alias}_owner`] = f.owner;
+    variables[`${f.alias}_name`] = f.name;
+    variables[`${f.alias}_number`] = f.number;
+    varDecls.push(
+      `$${f.alias}_owner: String!, $${f.alias}_name: String!, $${f.alias}_number: Int!`
+    );
+  }
+  const queryHeader = varDecls.length ? `query(${varDecls.join(', ')})` : 'query';
+
   const searchBlocks = Object.keys(VIEWS).map(view => `
     ${view}: search(query: "${VIEWS[view]}", type: ISSUE, first: 50) { ${ISSUE_FIELDS} }
   `).join('\n');
 
   const favBlocks = favEntries.map(f => `
-    ${f.alias}: repository(owner: "${f.owner}", name: "${f.name}") {
-      issueOrPullRequest(number: ${f.number}) {
+    ${f.alias}: repository(owner: $${f.alias}_owner, name: $${f.alias}_name) {
+      issueOrPullRequest(number: $${f.alias}_number) {
         __typename
         ... on Issue { number title url state repository { nameWithOwner } ${LABEL_FRAG} }
         ... on PullRequest { number title url state repository { nameWithOwner } ${LABEL_FRAG} }
@@ -65,7 +77,7 @@ function buildRefreshQuery(favorites) {
     }
   `).join('\n');
 
-  return { query: `query { ${searchBlocks} ${favBlocks} }`, favEntries };
+  return { query: `${queryHeader} { ${searchBlocks} ${favBlocks} }`, variables, favEntries };
 }
 
 function normalizeNode(n) {
@@ -81,7 +93,7 @@ function normalizeNode(n) {
   };
 }
 
-async function ghGraphQL(token, query) {
+async function ghGraphQL(token, query, variables) {
   const res = await fetch('https://api.github.com/graphql', {
     method: 'POST',
     headers: {
@@ -89,7 +101,7 @@ async function ghGraphQL(token, query) {
       'Content-Type': 'application/json',
       Accept: 'application/vnd.github+json',
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -109,8 +121,8 @@ async function refresh() {
   setStatus('Refreshing…', 'muted');
   $('refresh').disabled = true;
   try {
-    const { query, favEntries } = buildRefreshQuery(cfg.favorites || {});
-    const data = await ghGraphQL(cfg.token, query);
+    const { query, variables, favEntries } = buildRefreshQuery(cfg.favorites || {});
+    const data = await ghGraphQL(cfg.token, query, variables);
 
     const cache = {
       fetchedAt: Date.now(),
@@ -172,7 +184,7 @@ async function runSearch() {
       number: i.number,
       title: i.title,
       html_url: i.html_url,
-      state: i.state,
+      state: (i.state || '').toLowerCase(),
       isPR: !!i.pull_request,
       repo: (i.repository_url || '').replace('https://api.github.com/repos/', ''),
       labels: (i.labels || []).map(l => ({ name: l.name, color: l.color })),
@@ -252,39 +264,86 @@ async function render() {
   renderIssues(issues, favSet, view);
 }
 
-function renderIssues(issues, favSet, view) {
-  list.innerHTML = '';
-  for (const issue of issues) {
-    const k = key(issue);
-    const isFav = favSet.has(k);
-    const div = document.createElement('div');
-    div.className = 'issue';
-    const labelHtml = (issue.labels || []).map(l => {
-      const c = (l.color || '888').replace('#', '');
-      return `<span class="label" style="--lc:#${escapeHtml(c)}">${escapeHtml(l.name)}</span>`;
-    }).join('');
-    const showState = (view === 'favorites' || view === 'search') && issue.state && issue.state !== 'open';
-    const stateBadge = showState
-      ? `<span class="badge ${issue.state}">${issue.isPR ? 'PR' : 'Issue'} · ${issue.state}</span>`
-      : (issue.isPR ? '<span class="badge pr">PR</span>' : '');
-    div.innerHTML = `
-      <button class="star ${isFav ? 'on' : ''}" data-key="${k}" title="${isFav ? 'Unfavorite' : 'Favorite'}" aria-label="${isFav ? 'Unfavorite' : 'Favorite'}">★</button>
-      <div class="body">
-        <a href="${issue.html_url}" target="_blank" rel="noopener" class="title">${escapeHtml(issue.title)}</a>
-        <div class="meta">
-          <span class="repo-tag">${escapeHtml(issue.repo || '')}</span>
-          <span class="num">#${issue.number}</span>
-          ${stateBadge}
-          ${labelHtml}
-        </div>
-      </div>
-    `;
-    list.appendChild(div);
+function isSafeGitHubUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && u.hostname === 'github.com';
+  } catch {
+    return false;
   }
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function safeHexColor(c) {
+  return /^[0-9a-fA-F]{3,8}$/.test(c) ? c : '888';
+}
+
+function renderIssues(issues, favSet, view) {
+  list.replaceChildren();
+  for (const issue of issues) {
+    const k = key(issue);
+    const isFav = favSet.has(k);
+
+    const div = document.createElement('div');
+    div.className = 'issue';
+
+    const star = document.createElement('button');
+    star.className = isFav ? 'star on' : 'star';
+    star.dataset.key = k;
+    const favLabel = isFav ? 'Unfavorite' : 'Favorite';
+    star.title = favLabel;
+    star.setAttribute('aria-label', favLabel);
+    star.textContent = '★';
+    div.appendChild(star);
+
+    const body = document.createElement('div');
+    body.className = 'body';
+
+    const a = document.createElement('a');
+    a.className = 'title';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    if (isSafeGitHubUrl(issue.html_url)) a.href = issue.html_url;
+    a.textContent = issue.title || '';
+    body.appendChild(a);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+
+    const repoTag = document.createElement('span');
+    repoTag.className = 'repo-tag';
+    repoTag.textContent = issue.repo || '';
+    meta.appendChild(repoTag);
+
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = `#${issue.number}`;
+    meta.appendChild(num);
+
+    const showState = (view === 'favorites' || view === 'search') && issue.state && issue.state !== 'open';
+    if (showState) {
+      const badge = document.createElement('span');
+      badge.className = `badge ${issue.state}`;
+      badge.textContent = `${issue.isPR ? 'PR' : 'Issue'} · ${issue.state}`;
+      meta.appendChild(badge);
+    } else if (issue.isPR) {
+      const badge = document.createElement('span');
+      badge.className = 'badge pr';
+      badge.textContent = 'PR';
+      meta.appendChild(badge);
+    }
+
+    for (const l of (issue.labels || [])) {
+      const span = document.createElement('span');
+      span.className = 'label';
+      span.style.setProperty('--lc', `#${safeHexColor((l.color || '888').replace(/#/g, ''))}`);
+      span.textContent = l.name || '';
+      meta.appendChild(span);
+    }
+
+    body.appendChild(meta);
+    div.appendChild(body);
+    list.appendChild(div);
+  }
 }
 
 list.addEventListener('click', async (e) => {
@@ -299,7 +358,8 @@ list.addEventListener('click', async (e) => {
   } else {
     const issueEl = star.closest('.issue');
     const a = issueEl.querySelector('a.title');
-    favs[k] = { title: a.textContent, url: a.href };
+    const url = isSafeGitHubUrl(a.href) ? a.href : '';
+    favs[k] = { title: a.textContent, url };
   }
   await setFavorites(favs);
   render();
