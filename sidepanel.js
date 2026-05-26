@@ -28,6 +28,19 @@ function key(issue) {
 }
 
 const LABEL_FRAG = `labels(first: 20) { nodes { name color } }`;
+const PR_LINK_FRAG = `
+  timelineItems(first: 10, itemTypes: [CROSS_REFERENCED_EVENT]) {
+    nodes {
+      ... on CrossReferencedEvent {
+        source {
+          __typename
+          ... on PullRequest { state }
+        }
+      }
+    }
+  }
+`;
+
 const ISSUE_FIELDS = `
   nodes {
     __typename
@@ -35,6 +48,7 @@ const ISSUE_FIELDS = `
       number title url state
       repository { nameWithOwner }
       ${LABEL_FRAG}
+      ${PR_LINK_FRAG}
     }
     ... on PullRequest {
       number title url state
@@ -82,6 +96,9 @@ function buildRefreshQuery(favorites) {
 
 function normalizeNode(n) {
   if (!n) return null;
+  const linkedPRs = (n.timelineItems?.nodes || [])
+    .map(e => e.source)
+    .filter(s => s && s.__typename === 'PullRequest');
   return {
     number: n.number,
     title: n.title,
@@ -90,6 +107,7 @@ function normalizeNode(n) {
     isPR: n.__typename === 'PullRequest',
     repo: n.repository?.nameWithOwner || '',
     labels: (n.labels?.nodes || []).map(l => ({ name: l.name, color: l.color })),
+    hasOpenPR: linkedPRs.some(pr => pr.state === 'OPEN'),
   };
 }
 
@@ -244,6 +262,10 @@ async function render() {
         isPR: false,
       };
     });
+  } else if (view === 'assignedNoPR') {
+    issues = (cache.views?.assigned || []).filter(i => !i.hasOpenPR);
+  } else if (view === 'assignedWithPR') {
+    issues = (cache.views?.assigned || []).filter(i => i.hasOpenPR);
   } else {
     issues = cache.views?.[view] || [];
   }
